@@ -2,13 +2,13 @@
 
 ![A picture of a cat](/assets/_MG_6227.JPG)
 
-VescBLEBridge is a project that lets you add Bluetooth connectivity to your Vesc Controller for only 3€. It utilizes the ESP32 C3 microcontroller as a cost-effective BLE (Bluetooth Low Energy) module. It allows seamless communication between your Vesc controllers and the Vesc Tool App.
+VescBLEBridge is a project that lets you add Bluetooth connectivity to your Vesc Controller for only 3€. It utilizes the Seeed Studio XIAO ESP32-C6 microcontroller as a cost-effective BLE (Bluetooth Low Energy) module. It allows seamless communication between your Vesc controllers and the Vesc Tool App.
 
 ## Features
 
-- **Compact Design:** The ESP32 C3's small form factor makes it an ideal choice for applications where space is a constraint.
+- **Compact Design:** The XIAO ESP32-C6's small form factor makes it an ideal choice for applications where space is a constraint.
 
-- **Cost-Effective:** Utilizing the ESP32 C3 as a BLE module provides a budget-friendly alternative to an NRF module for integrating Bluetooth connectivity into Vesc controllers.
+- **Cost-Effective:** Utilizing the XIAO ESP32-C6 as a BLE module provides a budget-friendly alternative to an NRF module for integrating Bluetooth connectivity into Vesc controllers.
 
 - **User-Friendly:** VescBLEBridge is designed to be easy to use, with straightforward setup and configuration. Prebuild versions with flashed firmware and soldered connectors are also planned.
 
@@ -16,19 +16,19 @@ VescBLEBridge is a project that lets you add Bluetooth connectivity to your Vesc
 
 ### Hardware Setup:
 **What you need:**
-- [ESP32 C3 Dev Board](https://de.aliexpress.com/item/1005005967641936.html)
+- [Seeed Studio XIAO ESP32-C6](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html)
 - Some Wires
 - Fitting connector for your Vesc Uart port (Most likely JST-PH2.0)
 - USB C Cable
 
-Connect the ESP32 C3 to your Vesc controller following the table below.
+Connect the XIAO ESP32-C6 to your Vesc controller following the table below.
 
-| ESP32 C3    || VESC          |
-| ----------- |-| -------------|
-| 5V          |->| 5V          |
-| GND         |->| GND         |
-| 20          |->| RX          |
-| 21          |->| TX          |
+| XIAO ESP32-C6 || VESC         |
+| ------------- |-| ------------|
+| 5V            |->| 5V         |
+| GND           |->| GND        |
+| D7 (GPIO17)   |->| RX         |
+| D6 (GPIO16)   |->| TX         |
 
 If it doesnt work you can try swapping rx and tx pins cause they are swapped on some vesc controllers.
 

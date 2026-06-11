@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 
+#define LOG_TAG_BLESERVER "BleServer"
+
 int MTU_SIZE = 128;
 int PACKET_SIZE = MTU_SIZE - 3;
 NimBLEServer *pServer = nullptr;
@@ -86,7 +88,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
 void setup()
 {
   Serial.begin(115200);
-  Serial1.begin(115200, SERIAL_8N1, 20, 21); // RX=20, TX=21
+  Serial1.begin(115200, SERIAL_8N1, 17, 16); // RX=GPIO17(D7), TX=GPIO16(D6)
 
   // Create the BLE Device
   NimBLEDevice::init("VescBLEBridge");
