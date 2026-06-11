@@ -116,9 +116,6 @@ void setup()
 
   pCharacteristicVescRx->setCallbacks(new MyCallbacks());
 
-  // Start the VESC service
-  pService->start();
-
   // Start advertising
   NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(VESC_SERVICE_UUID);
