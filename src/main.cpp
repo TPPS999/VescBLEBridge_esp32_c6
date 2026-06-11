@@ -24,26 +24,26 @@ uint8_t txValue = 0;
 
 /**  None of these are required as they will be handled by the library with defaults. **
  **                       Remove as you see fit for your needs                        */
-class MyServerCallbacks : public BLEServerCallbacks
+class MyServerCallbacks : public NimBLEServerCallbacks
 {
-  void onConnect(NimBLEServer *pServer, ble_gap_conn_desc *desc)
+  void onConnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo)
   {
-    ESP_LOGI(LOG_TAG_BLESERVER, "Client connected: %s", NimBLEAddress(desc->peer_ota_addr).toString().c_str());
+    ESP_LOGI(LOG_TAG_BLESERVER, "Client connected: %s", connInfo.getAddress().toString().c_str());
     ESP_LOGI(LOG_TAG_BLESERVER, "Multi-connect support: start advertising");
     deviceConnected = true;
     NimBLEDevice::startAdvertising();
   }
 
-  void onDisconnect(NimBLEServer *pServer)
+  void onDisconnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo, int reason)
   {
     ESP_LOGI(LOG_TAG_BLESERVER, "Client disconnected - start advertising");
     deviceConnected = false;
     NimBLEDevice::startAdvertising();
   }
 
-  void onMTUChange(uint16_t MTU, ble_gap_conn_desc *desc)
+  void onMTUChange(uint16_t MTU, NimBLEConnInfo &connInfo)
   {
-    ESP_LOGI(LOG_TAG_BLESERVER, "MTU changed - new size %d, peer %s", MTU, NimBLEAddress(desc->peer_ota_addr).toString().c_str());
+    ESP_LOGI(LOG_TAG_BLESERVER, "MTU changed - new size %d, peer %s", MTU, connInfo.getAddress().toString().c_str());
     MTU_SIZE = MTU;
     PACKET_SIZE = MTU_SIZE - 3;
   }
@@ -65,9 +65,9 @@ void dumpBuffer(std::string header, std::string buffer)
   ESP_LOGD(LOG_TAG_BLESERVER, "%s", tmpbuf);
 }
 
-class MyCallbacks : public BLECharacteristicCallbacks
+class MyCallbacks : public NimBLECharacteristicCallbacks
 {
-  void onWrite(BLECharacteristic *pCharacteristic)
+  void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo)
   {
     ESP_LOGD(LOG_TAG_BLESERVER, "onWrite to characteristics: %s", pCharacteristic->getUUID().toString().c_str());
     std::string rxValue = pCharacteristic->getValue();
@@ -92,16 +92,15 @@ void setup()
 
   // Create the BLE Device
   NimBLEDevice::init("VescBLEBridge");
-  NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+  NimBLEDevice::setPower(9); // +9 dBm
 
   // Create the BLE Server
   pServer = NimBLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
-  auto pSecurity = new NimBLESecurity();
-  pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
+  NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
   // Create the BLE Service
-  BLEService *pService = pServer->createService(VESC_SERVICE_UUID);
+  NimBLEService *pService = pServer->createService(VESC_SERVICE_UUID);
 
   // Create a BLE TX Characteristic
   pCharacteristicVescTx = pService->createCharacteristic(
