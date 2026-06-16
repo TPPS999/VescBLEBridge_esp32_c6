@@ -140,7 +140,7 @@ void setup()
 
   // Create the BLE Device
   NimBLEDevice::init("VescBLEBridge");
-  NimBLEDevice::setPower(9); // +9 dBm
+  NimBLEDevice::setPower(3); // DIAGNOSTICS: lowered from +9 to +3 dBm to test for power-rail brownouts
 
   // Create the BLE Server
   pServer = NimBLEDevice::createServer();
