@@ -26,7 +26,7 @@ uint8_t txValue = 0;
  **                       Remove as you see fit for your needs                        */
 class MyServerCallbacks : public NimBLEServerCallbacks
 {
-  void onConnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo)
+  void onConnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo) override
   {
     ESP_LOGI(LOG_TAG_BLESERVER, "Client connected: %s", connInfo.getAddress().toString().c_str());
     ESP_LOGI(LOG_TAG_BLESERVER, "Multi-connect support: start advertising");
@@ -34,14 +34,14 @@ class MyServerCallbacks : public NimBLEServerCallbacks
     NimBLEDevice::startAdvertising();
   }
 
-  void onDisconnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo, int reason)
+  void onDisconnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo, int reason) override
   {
     ESP_LOGI(LOG_TAG_BLESERVER, "Client disconnected - start advertising");
     deviceConnected = false;
     NimBLEDevice::startAdvertising();
   }
 
-  void onMTUChange(uint16_t MTU, NimBLEConnInfo &connInfo)
+  void onMTUChange(uint16_t MTU, NimBLEConnInfo &connInfo) override
   {
     ESP_LOGI(LOG_TAG_BLESERVER, "MTU changed - new size %d, peer %s", MTU, connInfo.getAddress().toString().c_str());
     MTU_SIZE = MTU;
@@ -67,7 +67,7 @@ void dumpBuffer(std::string header, std::string buffer)
 
 class MyCallbacks : public NimBLECharacteristicCallbacks
 {
-  void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo)
+  void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo) override
   {
     ESP_LOGD(LOG_TAG_BLESERVER, "onWrite to characteristics: %s", pCharacteristic->getUUID().toString().c_str());
     std::string rxValue = pCharacteristic->getValue();
@@ -89,6 +89,7 @@ void setup()
 {
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, 17, 16); // RX=GPIO17(D7), TX=GPIO16(D6)
+  esp_log_level_set(LOG_TAG_BLESERVER, ESP_LOG_DEBUG); // verbose UART/BLE byte dumps on Serial monitor
 
   // Create the BLE Device
   NimBLEDevice::init("VescBLEBridge");
@@ -97,7 +98,7 @@ void setup()
   // Create the BLE Server
   pServer = NimBLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
-  NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
+  NimBLEDevice::setSecurityAuth(true, false, false); // bonding, mitm, secure connections
 
   // Create the BLE Service
   NimBLEService *pService = pServer->createService(VESC_SERVICE_UUID);
