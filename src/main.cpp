@@ -22,6 +22,18 @@ uint8_t txValue = 0;
 #define VESC_CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define VESC_CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+// DIAGNOSTICS: set to 1 to test with RX/TX physically swapped, in case the
+// wiring orientation to the VESC turns out to be reversed. No rewiring needed,
+// just flip this and re-flash.
+#define VESC_UART_SWAP_PINS 0
+#if VESC_UART_SWAP_PINS
+#define VESC_RX_PIN 16 // GPIO16 (D6)
+#define VESC_TX_PIN 17 // GPIO17 (D7)
+#else
+#define VESC_RX_PIN 17 // GPIO17 (D7)
+#define VESC_TX_PIN 16 // GPIO16 (D6)
+#endif
+
 /**  None of these are required as they will be handled by the library with defaults. **
  **                       Remove as you see fit for your needs                        */
 class MyServerCallbacks : public NimBLEServerCallbacks
@@ -65,6 +77,41 @@ void dumpBuffer(std::string header, std::string buffer)
   ESP_LOGD(LOG_TAG_BLESERVER, "%s", tmpbuf);
 }
 
+// DIAGNOSTICS: minimal VESC UART protocol implementation, just enough to
+// send a COMM_GET_VALUES request directly over Serial1. The VESC stays
+// silent until it is asked for something, so periodically sending this
+// (while no BLE client is connected, to avoid colliding with real traffic)
+// proves whether the UART link to the VESC actually works in both
+// directions, independent of BLE/VESC Tool.
+uint16_t vescCrc16(const uint8_t *buf, size_t len)
+{
+  uint16_t crc = 0;
+  for (size_t i = 0; i < len; i++)
+  {
+    crc ^= (uint16_t)buf[i] << 8;
+    for (int b = 0; b < 8; b++)
+    {
+      crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : (crc << 1);
+    }
+  }
+  return crc;
+}
+
+void sendVescGetValuesPing()
+{
+  const uint8_t COMM_GET_VALUES = 4;
+  uint8_t packet[6];
+  packet[0] = 0x02; // short packet start byte
+  packet[1] = 1;    // payload length
+  packet[2] = COMM_GET_VALUES;
+  uint16_t crc = vescCrc16(&packet[2], 1);
+  packet[3] = (crc >> 8) & 0xFF;
+  packet[4] = crc & 0xFF;
+  packet[5] = 0x03; // stop byte
+  Serial1.write(packet, sizeof(packet));
+  ESP_LOGI(LOG_TAG_BLESERVER, "Diagnostic ping sent to VESC (COMM_GET_VALUES)");
+}
+
 class MyCallbacks : public NimBLECharacteristicCallbacks
 {
   void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo) override
@@ -88,7 +135,7 @@ class MyCallbacks : public NimBLECharacteristicCallbacks
 void setup()
 {
   Serial.begin(115200);
-  Serial1.begin(115200, SERIAL_8N1, 17, 16); // RX=GPIO17(D7), TX=GPIO16(D6)
+  Serial1.begin(115200, SERIAL_8N1, VESC_RX_PIN, VESC_TX_PIN);
   esp_log_level_set(LOG_TAG_BLESERVER, ESP_LOG_DEBUG); // verbose UART/BLE byte dumps on Serial monitor
 
   // Create the BLE Device
@@ -130,6 +177,7 @@ void setup()
 
 std::string vescBuffer;
 std::string updateBuffer;
+unsigned long lastVescPingMs = 0;
 
 void loop()
 {
@@ -143,19 +191,22 @@ void loop()
       vescBuffer.push_back(oneByte);
     }
 
+    // Always dump raw bytes received from the VESC, regardless of BLE
+    // connection state, so wiring/UART issues are visible on the Serial
+    // monitor even without VESC Tool connected.
+    dumpBuffer("VESC => UART (raw)", vescBuffer);
+
     if (deviceConnected)
     {
       while (vescBuffer.length() > 0)
       {
         if (vescBuffer.length() > PACKET_SIZE)
         {
-          dumpBuffer("VESC => BLE/UART", vescBuffer.substr(0, PACKET_SIZE));
           pCharacteristicVescTx->setValue(vescBuffer.substr(0, PACKET_SIZE));
           vescBuffer = vescBuffer.substr(PACKET_SIZE);
         }
         else
         {
-          dumpBuffer("VESC => BLE/UART", vescBuffer);
           pCharacteristicVescTx->setValue(vescBuffer);
           vescBuffer.clear();
         }
@@ -163,6 +214,18 @@ void loop()
         delay(5); // bluetooth stack will go into congestion, if too many packets are sent
       }
     }
+    else
+    {
+      vescBuffer.clear(); // avoid unbounded growth while nobody is connected
+    }
+  }
+
+  // DIAGNOSTICS: while no BLE client is connected, periodically probe the
+  // VESC directly over UART. Remove once the link is confirmed working.
+  if (!deviceConnected && millis() - lastVescPingMs > 2000)
+  {
+    lastVescPingMs = millis();
+    sendVescGetValuesPing();
   }
 
   // disconnecting
